@@ -1,0 +1,31 @@
+Goals:
+
+0.1: one light source, diffuse reflections
+     one box
+     one untextured planar surface
+     
+0.2: one light source, diffuse and specular reflections
+     one box
+     one reflective sphere
+     one textured planar surface
+
+0.3: one light source, diffuse and specular reflections
+     shadows
+     one box
+     one reflective sphere
+     one textured planar surface
+     (note: all required features)
+
+EXTENSIONS:
+
+0.4: cone, cylinder, tetrahedron, torus
+0.5: additional light sources, perhaps coloured, including spotlight
+0.6: moveable camera
+0.7: refractions
+0.8: bounding volumes to accelerate it
+0.9: (adaptive) supersampling
+0.10: textured sphere
+0.11: 3d textures
+0.12: fog
+0.13: more advanced lighting model
+
