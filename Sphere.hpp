@@ -9,7 +9,7 @@
 #ifndef H_SPHERE
 #define H_SPHERE
 
-#include "Object.h"
+#include "Object.hpp"
 
 /**
  * Defines a simple Sphere located at 'center' 
@@ -26,8 +26,8 @@ public:
 	    color = Color::WHITE;
 	};
     
-    Sphere(Vector c, float r, Color col)
-	: center(c), radius(r)
+    Sphere(Vector c, float r, Color col, bool reflective, bool transparent)
+	: center(c), radius(r), Object(reflective, transparent)
 	{
 	    color = col;
 	};

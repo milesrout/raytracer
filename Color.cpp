@@ -5,7 +5,7 @@
  *  A simple colour class with a set of operations including
  *    phong lighting.
  -------------------------------------------------------------*/
-#include "Color.h"
+#include "Color.hpp"
 
 //Multiplies the current colour by a scalar factor
 void Color::scaleColor(float scaleFactor) 

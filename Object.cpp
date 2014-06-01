@@ -7,7 +7,7 @@
 *  Being an abstract class, this class cannot be instantiated.
 -------------------------------------------------------------*/
 
-#include "Object.h"
+#include "Object.hpp"
 
 Color Object::getColor()
 {

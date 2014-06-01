@@ -7,7 +7,7 @@
 -------------------------------------------------------------*/
 
 #include <math.h>
-#include "Vector.h"
+#include "Vector.hpp"
 
 // Default constructor, initialises all values to 0. 
 Vector::Vector() : x(0), y(0), z(0) {}

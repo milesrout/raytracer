@@ -6,7 +6,7 @@
  *  methods intersect() and normal().
  -------------------------------------------------------------*/
 
-#include "Sphere.h"
+#include "Sphere.hpp"
 #include <math.h>
 
 /**
