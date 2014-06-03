@@ -18,13 +18,14 @@ const float WIDTH = 20.0;
 const float HEIGHT = 20.0;
 const float EDIST = 30.0;
 const int PPU = 60;     //Total 1200x1200 pixels
-const int MAX_STEPS = 10000;
+const int MAX_STEPS = 4;//10000;
 const float XMIN = -WIDTH * 0.5;
 const float XMAX =  WIDTH * 0.5;
 const float YMIN = -HEIGHT * 0.5;
 const float YMAX =  HEIGHT * 0.5;
 
 vector<Object*> sceneObjects;
+vector<vector<Color> > colours;
 
 Vector light = Vector(10.0, 40.0, -5.0);
 Color backgroundCol = Color::GRAY;
@@ -177,12 +178,12 @@ Color trace(Vector pos, Vector dir, int step)
 //---------------------------------------------------------------------------------------
 void display()
 {
+    static int counter = 0;
     int widthInPixels = (int)(WIDTH * PPU);
     int heightInPixels = (int)(HEIGHT * PPU);
     float pixelSize = 1.0/PPU;
     float halfPixelSize = pixelSize/2.0;
     float x1, y1, xc, yc;
-    Vector eye(0., 0., 0.);
 
     glClear(GL_COLOR_BUFFER_BIT);
 
@@ -195,11 +196,8 @@ void display()
 	    y1 = YMIN + j*pixelSize;
 	    yc = y1 + halfPixelSize;
 	    
-	    Vector dir(xc, yc, -EDIST);	//direction of the primary ray
-	    
-	    dir.normalise();			//Normalise this direction
-	    
-	    Color col = trace (eye, dir, 1); //Trace the primary ray and get the colour value
+	    //Color col = trace (eye, dir, 1); //Trace the primary ray and get the colour value
+	    Color col = colours[i][j];
 	    glColor3f(col.r, col.g, col.b);
 	    glVertex2f(x1, y1);				//Draw each pixel with its color value
 	    glVertex2f(x1 + pixelSize, y1);
@@ -207,9 +205,42 @@ void display()
 	    glVertex2f(x1, y1 + pixelSize);
 	}
     }
+
+    counter++;
     
     glEnd();
     glFlush();
+}
+
+void raytracer()
+{
+    int widthInPixels = (int)(WIDTH * PPU);
+    int heightInPixels = (int)(HEIGHT * PPU);
+    float pixelSize = 1.0/PPU;
+    float halfPixelSize = pixelSize/2.0;
+    float x1, y1, xc, yc;
+    Vector eye(0., 0., 0.);
+
+    for(int i = 0; i < widthInPixels; i++) { //Scan every "pixel"
+	x1 = XMIN + i*pixelSize;
+	xc = x1 + halfPixelSize;
+	colours.push_back(vector<Color>());
+
+	if ((i - 119) % 120 == 0) {
+	    printf("%d%%\n", (int)((i / 1200.0f)*100) + 1);
+	}
+
+	for(int j = 0; j < heightInPixels; j++) {
+	    y1 = YMIN + j*pixelSize;
+	    yc = y1 + halfPixelSize;
+	    Vector dir(xc, yc, -EDIST);	//direction of the primary ray
+	    
+	    dir.normalise();			//Normalise this direction
+	    
+	    Color col = trace (eye, dir, 1); //Trace the primary ray and get the colour value
+	    colours.back().push_back(col);
+	}
+    }
 }
 
 
@@ -222,33 +253,6 @@ void initialize()
     glLoadIdentity();
     glClearColor(0, 0, 0, 1);
 
-#define boxCoords(box, top, bottom, left, right, front, back) \
-    Vector *v_tlf##box = new Vector(left, top, front); \
-    Vector *v_trf##box = new Vector(right, top, front); \
-    Vector *v_blf##box = new Vector(left, bottom, front); \
-    Vector *v_brf##box = new Vector(right, bottom, front); \
-    Vector *v_tlb##box = new Vector(left, top, back); \
-    Vector *v_trb##box = new Vector(right, top, back); \
-    Vector *v_blb##box = new Vector(left, bottom, back); \
-    Vector *v_brb##box = new Vector(right, bottom, back);
-
-#define newBox(box, col, refl, refr, top, bottom, left, right, front, back) \
-    boxCoords(box, top, bottom, left, right, front, back) \
-    Plane * box##Front  = new Plane(*v_tlf##box, *v_trf##box, *v_blf##box, *v_brf##box, col, refl, refr); \
-    Plane * box##Back   = new Plane(*v_trb##box, *v_tlb##box, *v_brb##box, *v_blb##box, col, refl, refr); \
-    Plane * box##Left   = new Plane(*v_tlb##box, *v_tlf##box, *v_blb##box, *v_blf##box, col, refl, refr); \
-    Plane * box##Right  = new Plane(*v_trf##box, *v_trb##box, *v_brf##box, *v_brb##box, col, refl, refr); \
-    Plane * box##Top    = new Plane(*v_tlb##box, *v_trb##box, *v_tlf##box, *v_trf##box, col, refl, refr); \
-    Plane * box##Bottom = new Plane(*v_blf##box, *v_brf##box, *v_blb##box, *v_brb##box, col, refl, refr);
-
-#define addBox(box) \
-    sceneObjects.push_back(box##Front); \
-    sceneObjects.push_back(box##Back); \
-    sceneObjects.push_back(box##Left); \
-    sceneObjects.push_back(box##Right); \
-    sceneObjects.push_back(box##Top); \
-    sceneObjects.push_back(box##Bottom);
-
     Sphere *sphere11 = new Sphere(Vector(-6, 0, -40), 8.0, Color::BLUE, false, false);
     Sphere *sphere21 = new Sphere(Vector(4, 5, -40), 3.0, Color::RED, false, false);
     Sphere *sphere31 = new Sphere(Vector(4, -5, -40), 3.0, Color::GREEN, true, false);
@@ -260,16 +264,24 @@ void initialize()
     Sphere *sphere23 = new Sphere(Vector(4, 5, -60), 3.0, Color::BLUE, false, false);
     Sphere *sphere33 = new Sphere(Vector(4, -5, -60), 3.0, Color::RED, false, false);
 
-
     Sphere *sphereRef1 = new Sphere(Vector(4, 5, -30), 3.0, Color::GRAY, true, true);
     Sphere *sphereRef2 = new Sphere(Vector(4, -5, -30), 3.0, Color::GRAY, true, true);
     Sphere *sphereRef3 = new Sphere(Vector(-7, 0, -30), 4.0, Color::GRAY, true, true);
 
-    Plane *plane1 = new Plane(Vector(-1, -8, -1), Vector(-1, -8, 1), Vector(1, -8, 1), Vector(1, -8, -1), Color::BLUE, true, false);
-    Plane *plane2 = new Plane(Vector(-1.5, -1, -100), Vector(-1.5, 1, -100), Vector(0.5, 1, -100), Vector(0.5, -1, -100), Color::GRAY, false, false);
-
-    // newBox(foo, Color::RED, false, false, 1, -1, -1, 1, -30, -40);
-    // addBox(foo);
+    Plane *plane1 = new Plane(
+	Vector(-15, -8, -70), 
+	Vector(-15, -8, -10), 
+	Vector(15, -8, -10), 
+	Vector(15, -8, -70), 
+	Color::GRAY, true, false
+    );
+    Plane *plane2 = new Plane(
+	Vector(-15, 3, -70), 
+	Vector(-15, -8, -70), 
+	Vector(15, -8, -70), 
+	Vector(15, 3, -70), 
+	Color::RED, false, false
+    );
 
     sceneObjects.push_back(sphere13);
     sceneObjects.push_back(sphere14);
@@ -289,6 +301,8 @@ void initialize()
 
     sceneObjects.push_back(plane1);
     sceneObjects.push_back(plane2);
+
+    raytracer();
 }
 
 
