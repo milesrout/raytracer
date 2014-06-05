@@ -15,7 +15,7 @@
  * Define a simple Plane with corners at each of 'corners'
  */
 class Plane : public Object {
-private:
+protected:
     Vector topleft, topright, bottomleft, bottomright;
 public:  
     //Default constructor creates a unit plane

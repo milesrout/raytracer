@@ -9,7 +9,7 @@
 
 #include "Object.hpp"
 
-Color Object::getColor()
+Color Object::getColor(Vector)
 {
 	return color;
 }

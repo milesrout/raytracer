@@ -11,8 +11,13 @@
 #include "Plane.hpp"
 #include "Color.hpp"
 #include "Object.hpp"
+#include "TexturedPlane.hpp"
 #include <GL/glut.h>
 using namespace std;
+
+#ifndef AALEVEL
+#define AALEVEL 1
+#endif /* AALEVEL */
 
 const float WIDTH = 20.0;  
 const float HEIGHT = 20.0;
@@ -87,7 +92,7 @@ Color trace(Vector pos, Vector dir, int step)
 
     l.normalise();
     float lDotn = l.dot(n);
-    Color col = sceneObjects[q.index]->getColor(); //Object's colour
+    Color col = sceneObjects[q.index]->getColor(q.point); //Object's colour
     PointBundle shadow = closestPt(q.point, l);
 
     // I have changed this around a bit so that ambient light is still
@@ -218,7 +223,7 @@ void raytracer()
     int heightInPixels = (int)(HEIGHT * PPU);
     float pixelSize = 1.0/PPU;
     float halfPixelSize = pixelSize/2.0;
-    float x1, y1, xc, yc;
+    float x1, y1, xc, yc, xaa, yaa;
     Vector eye(0., 0., 0.);
 
     for(int i = 0; i < widthInPixels; i++) { //Scan every "pixel"
@@ -233,11 +238,19 @@ void raytracer()
 	for(int j = 0; j < heightInPixels; j++) {
 	    y1 = YMIN + j*pixelSize;
 	    yc = y1 + halfPixelSize;
-	    Vector dir(xc, yc, -EDIST);	//direction of the primary ray
+	    Color col(0., 0., 0.);
+
+	    for (int k = 0; k < AALEVEL; k++) {
+		xaa = x1 + (2*k + 1)*halfPixelSize/AALEVEL;
+		for (int l = 0; l < AALEVEL; l++) {
+		    yaa = y1 + (2*l + 1)*halfPixelSize/AALEVEL;
+		    Vector dir(xaa, yaa, -EDIST);	//direction of the primary ray
 	    
-	    dir.normalise();			//Normalise this direction
+		    dir.normalise();			//Normalise this direction
 	    
-	    Color col = trace (eye, dir, 1); //Trace the primary ray and get the colour value
+		    col.combineColor(trace (eye, dir, 1), 1.0f/(AALEVEL*AALEVEL)); //Trace the primary ray and get the colour value
+		}
+	    }
 	    colours.back().push_back(col);
 	}
     }
@@ -268,12 +281,44 @@ void initialize()
     Sphere *sphereRef2 = new Sphere(Vector(4, -5, -30), 3.0, Color::GRAY, true, true);
     Sphere *sphereRef3 = new Sphere(Vector(-7, 0, -30), 4.0, Color::GRAY, true, true);
 
-    Plane *plane1 = new Plane(
-	Vector(-15, -8, -70), 
-	Vector(-15, -8, -10), 
-	Vector(15, -8, -10), 
-	Vector(15, -8, -70), 
-	Color::GRAY, true, false
+    // Plane *plane1 = new Plane(
+    // 	Vector(-15, -8, -70), 
+    // 	Vector(-15, -8, -10), 
+    // 	Vector(15, -8, -10), 
+    // 	Vector(15, -8, -70), 
+    // 	Color::GRAY, true, false
+    // );
+
+    std::vector<std::vector<Color> > tex;
+    tex.push_back(std::vector<Color>());
+    tex.push_back(std::vector<Color>());
+    tex.push_back(std::vector<Color>());
+    tex.push_back(std::vector<Color>());
+
+    tex[0].push_back(Color::RED);
+    tex[0].push_back(Color::BLUE);
+    tex[0].push_back(Color::GREEN);
+    tex[0].push_back(Color::WHITE);
+
+    tex[1].push_back(Color::WHITE);
+    tex[1].push_back(Color::RED);
+    tex[1].push_back(Color::BLUE);
+    tex[1].push_back(Color::GREEN);
+
+    tex[2].push_back(Color::GREEN);
+    tex[2].push_back(Color::WHITE);
+    tex[2].push_back(Color::RED);
+    tex[2].push_back(Color::BLUE);
+
+    tex[3].push_back(Color::BLUE);
+    tex[3].push_back(Color::GREEN);
+    tex[3].push_back(Color::WHITE);
+    tex[3].push_back(Color::RED);
+
+    Plane *plane1 = new TexturedPlane(
+	Vector(-15, -8, -70),
+	30, 60,
+	false, false, tex
     );
     Plane *plane2 = new Plane(
 	Vector(-15, 3, -70), 
