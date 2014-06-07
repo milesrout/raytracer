@@ -8,7 +8,7 @@
 
 #ifndef H_TEXPLANE
 #define H_TEXPLANE
-
+#include <iostream>
 #include <vector>
 #include "Object.hpp"
 #include "Vector.hpp"
@@ -30,15 +30,30 @@ public:
     };
     
     TexturedPlane(Vector topleft, float width, float height, bool reflective, bool transparent, std::vector<std::vector<Color> > texture)
-	: Plane(topleft, topleft+Vector(width, 0, 0), topleft+Vector(0,0,height), topleft+Vector(width,0,height), Color::WHITE, reflective, transparent), texture(texture) {
-      width = (topleft - topright).length();
-      height = (topleft - bottomleft).length();
+	: Plane(topleft, topleft+Vector(width,0,0), topleft+Vector(0,0,height), topleft+Vector(width,0,height), Color::WHITE, reflective, transparent), texture(texture) {
+	width = (topleft - topright).length();
+	height = (topleft - bottomleft).length();
+
+	texwidth = texture.size();
+	texheight = texture[0].size();
     };
-    
+
+    Vector normal(Vector pos) {
+	return Vector(0, 1, 0);
+    }
 
     Color getColor(Vector p) {
+	// Vector tex(texwidth, 0, texheight);
+	Vector v = p - topleft;
+	v /= 3; 
 
-	
+	float w = v.x * texwidth;
+	float h = v.z * texheight;
+
+	int x = fmodf(w+2000, texwidth);
+	int z = fmodf(h+2000, texheight);
+
+	return texture[x][z];
     }
 };
 

@@ -8,13 +8,38 @@
 
 #include "Cylinder.hpp"
 #include <math.h>
+#include <iostream>
+#include <exception>
+#include <stdexcept>
 
 /**
  * Cylinder's intersection method. The input is a ray (pos, dir).
  */
 float Cylinder::intersect(Vector pos, Vector dir)
 {
-    return -1.0f;
+    float x = pos.x - base.x;
+    float z = pos.z - base.z;
+    float a = dir.x*dir.x + dir.z*dir.z;
+    float b = dir.x*x + dir.z*z;
+    float c = x*x + z*z - radius*radius;
+
+    float discriminant = b*b - 4*a*c;
+    if (discriminant <= 0) return -1.0f;
+
+    float t1 = (-b + sqrt(discriminant)) / (2*a);
+    float t2 = (-b - sqrt(discriminant)) / (2*a);
+
+    if (t1 > 0) {
+	if (t1 < t2) return t1;
+	else if (t2 > 0) return t2;
+	else return t1;
+    }
+    else if (t2 > 0) {
+	return t2;
+    }
+    else {
+	return -1.0f;
+    }
 }
 
 /**

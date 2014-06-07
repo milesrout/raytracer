@@ -5,7 +5,9 @@
 #include <stdio.h>
 #include <iostream>
 #include <cmath>
+#include <stdlib.h>
 #include <vector>
+#include "Cylinder.hpp"
 #include "Vector.hpp"
 #include "Sphere.hpp"
 #include "Plane.hpp"
@@ -22,8 +24,8 @@ using namespace std;
 const float WIDTH = 20.0;  
 const float HEIGHT = 20.0;
 const float EDIST = 30.0;
-const int PPU = 60;     //Total 1200x1200 pixels
-const int MAX_STEPS = 4;//10000;
+const int PPU = 40;     //Total 800x800 pixels
+const int MAX_STEPS = 10;
 const float XMIN = -WIDTH * 0.5;
 const float XMAX =  WIDTH * 0.5;
 const float YMIN = -HEIGHT * 0.5;
@@ -49,7 +51,7 @@ struct PointBundle
  */
 PointBundle closestPt(Vector pos, Vector dir)
 {
-    Vector  point(0, 0, 0);
+    Vector point(0, 0, 0);
     float min = 10000.0;
 
     PointBundle out = {point, -1, 0.0};
@@ -240,20 +242,102 @@ void raytracer()
 	    yc = y1 + halfPixelSize;
 	    Color col(0., 0., 0.);
 
+#ifndef AA_ADAPTIVE
 	    for (int k = 0; k < AALEVEL; k++) {
 		xaa = x1 + (2*k + 1)*halfPixelSize/AALEVEL;
 		for (int l = 0; l < AALEVEL; l++) {
 		    yaa = y1 + (2*l + 1)*halfPixelSize/AALEVEL;
+#else
+		    xaa = xc;
+		    yaa = yc;
+#endif
 		    Vector dir(xaa, yaa, -EDIST);	//direction of the primary ray
 	    
 		    dir.normalise();			//Normalise this direction
-	    
+#ifdef AA_ADAPTIVE	    
+		    col.combineColor(trace (eye, dir, 1), 1.0f); //Trace the primary ray and get the colour value
+#else
 		    col.combineColor(trace (eye, dir, 1), 1.0f/(AALEVEL*AALEVEL)); //Trace the primary ray and get the colour value
 		}
 	    }
+#endif
 	    colours.back().push_back(col);
 	}
     }
+#ifdef AA_ADAPTIVE
+    std::vector<std::pair<int, int> > adaptiveAA;
+
+    for (int i = 0; i < widthInPixels-1; i++) {
+	for (int j = 0; j < heightInPixels-1; j++) {
+	    int counter = 0;
+
+	    float diff00r01 = abs(colours[i][j].r - colours[i][j+1].r);
+	    float diff00r10 = abs(colours[i][j].r - colours[i+1][j].r);
+	    float diff00r11 = abs(colours[i][j].r - colours[i+1][j+1].r);
+	    float diff01r10 = abs(colours[i][j+1].r - colours[i+1][j].r);
+	    float diff01r11 = abs(colours[i][j+1].r - colours[i+1][j+1].r);
+	    float diff10r11 = abs(colours[i+1][j].r - colours[i+1][j+1].r);
+
+	    diff00r01 > ADAPTIVE_THRESHOLD ? counter++ : counter;
+	    diff00r10 > ADAPTIVE_THRESHOLD ? counter++ : counter;
+	    diff00r11 > ADAPTIVE_THRESHOLD ? counter++ : counter;
+	    diff01r10 > ADAPTIVE_THRESHOLD ? counter++ : counter;
+	    diff01r11 > ADAPTIVE_THRESHOLD ? counter++ : counter;
+	    diff10r11 > ADAPTIVE_THRESHOLD ? counter++ : counter;
+	    
+	    float diff00g01 = abs(colours[i][j].g - colours[i][j+1].g);
+	    float diff00g10 = abs(colours[i][j].g - colours[i+1][j].g);
+	    float diff00g11 = abs(colours[i][j].g - colours[i+1][j+1].g);
+	    float diff01g10 = abs(colours[i][j+1].g - colours[i+1][j].g);
+	    float diff01g11 = abs(colours[i][j+1].g - colours[i+1][j+1].g);
+	    float diff10g11 = abs(colours[i+1][j].g - colours[i+1][j+1].g);
+
+	    diff00g01 > ADAPTIVE_THRESHOLD ? counter++ : counter;
+	    diff00g10 > ADAPTIVE_THRESHOLD ? counter++ : counter;
+	    diff00g11 > ADAPTIVE_THRESHOLD ? counter++ : counter;
+	    diff01g10 > ADAPTIVE_THRESHOLD ? counter++ : counter;
+	    diff01g11 > ADAPTIVE_THRESHOLD ? counter++ : counter;
+	    diff10g11 > ADAPTIVE_THRESHOLD ? counter++ : counter;
+	    
+	    float diff00b01 = abs(colours[i][j].b - colours[i][j+1].b);
+	    float diff00b10 = abs(colours[i][j].b - colours[i+1][j].b);
+	    float diff00b11 = abs(colours[i][j].b - colours[i+1][j+1].b);
+	    float diff01b10 = abs(colours[i][j+1].b - colours[i+1][j].b);
+	    float diff01b11 = abs(colours[i][j+1].b - colours[i+1][j+1].b);
+	    float diff10b11 = abs(colours[i+1][j].b - colours[i+1][j+1].b);
+
+	    diff00b01 > ADAPTIVE_THRESHOLD ? counter++ : counter;
+	    diff00b10 > ADAPTIVE_THRESHOLD ? counter++ : counter;
+	    diff00b11 > ADAPTIVE_THRESHOLD ? counter++ : counter;
+	    diff01b10 > ADAPTIVE_THRESHOLD ? counter++ : counter;
+	    diff01b11 > ADAPTIVE_THRESHOLD ? counter++ : counter;
+	    diff10b11 > ADAPTIVE_THRESHOLD ? counter++ : counter;
+
+	    if (counter > ADAPTIVE_COUNTER_THRESHOLD) adaptiveAA.push_back(std::pair<int,int>(i,j));
+	}
+    }
+
+    for (std::vector<std::pair<int,int> >::iterator iter = adaptiveAA.begin(); iter != adaptiveAA.end(); iter++) {
+	int i = iter->first;
+	int j = iter->second;
+	x1 = XMIN + i*pixelSize;
+	y1 = YMIN + j*pixelSize;
+	Color col(0., 0., 0.);
+	for (int k = 0; k < AALEVEL; k++) {
+	    xaa = x1 + (2*k + 1)*halfPixelSize/AALEVEL;
+	    for (int l = 0; l < AALEVEL; l++) {
+	        yaa = y1 + (2*l + 1)*halfPixelSize/AALEVEL;
+
+		Vector dir(xaa, yaa, -EDIST);	//direction of the primary ray
+		
+		dir.normalise();			//Normalise this direction
+		col.combineColor(trace (eye, dir, 1), 1.0f/(AALEVEL*AALEVEL)); //Trace the primary ray and get the colour value
+		
+            }
+	}
+	colours[i][j] = col;
+    }
+#endif /* AA_ADAPTIVE */
 }
 
 
@@ -277,9 +361,9 @@ void initialize()
     Sphere *sphere23 = new Sphere(Vector(4, 5, -60), 3.0, Color::BLUE, false, false);
     Sphere *sphere33 = new Sphere(Vector(4, -5, -60), 3.0, Color::RED, false, false);
 
-    Sphere *sphereRef1 = new Sphere(Vector(4, 5, -30), 3.0, Color::GRAY, true, true);
-    Sphere *sphereRef2 = new Sphere(Vector(4, -5, -30), 3.0, Color::GRAY, true, true);
-    Sphere *sphereRef3 = new Sphere(Vector(-7, 0, -30), 4.0, Color::GRAY, true, true);
+    Sphere *sphereRef1 = new Sphere(Vector(4, 5, -30), 3.0, Color::GRAY, false, true);
+    Sphere *sphereRef2 = new Sphere(Vector(4, -5, -30), 3.0, Color::GRAY, false, true);
+    Sphere *sphereRef3 = new Sphere(Vector(-7, 0, -30), 4.0, Color::GRAY, false, true);
 
     // Plane *plane1 = new Plane(
     // 	Vector(-15, -8, -70), 
@@ -300,33 +384,59 @@ void initialize()
     tex[0].push_back(Color::GREEN);
     tex[0].push_back(Color::WHITE);
 
+    tex[1].push_back(Color::GREEN);
     tex[1].push_back(Color::WHITE);
     tex[1].push_back(Color::RED);
     tex[1].push_back(Color::BLUE);
-    tex[1].push_back(Color::GREEN);
 
-    tex[2].push_back(Color::GREEN);
     tex[2].push_back(Color::WHITE);
     tex[2].push_back(Color::RED);
     tex[2].push_back(Color::BLUE);
+    tex[2].push_back(Color::GREEN);
 
     tex[3].push_back(Color::BLUE);
     tex[3].push_back(Color::GREEN);
     tex[3].push_back(Color::WHITE);
     tex[3].push_back(Color::RED);
 
+    for (int i = 0; i < 4; i++) {
+	for (int j = 0; j < 4; j++) {
+	    tex[i][j].scaleColor(0.25);
+	}
+    }
+
     Plane *plane1 = new TexturedPlane(
 	Vector(-15, -8, -70),
 	30, 60,
-	false, false, tex
+	true, false, tex
     );
-    Plane *plane2 = new Plane(
-	Vector(-15, 3, -70), 
-	Vector(-15, -8, -70), 
-	Vector(15, -8, -70), 
-	Vector(15, 3, -70), 
-	Color::RED, false, false
-    );
+
+    Vector tlf( 1, -1, -40);
+    Vector trf( 1,  1, -40);
+    Vector tlb( 1, -1, -30);
+    Vector trb( 1,  1, -30);
+    Vector blf( 3, -1, -40);
+    Vector brf( 3,  1, -40);
+    Vector blb( 3, -1, -30);
+    Vector brb( 3,  1, -30);
+
+    Plane *boxtop    = new Plane(tlf, trf, trb, tlb, Color::GREEN, false, false);
+    Plane *boxbottom = new Plane(blf, brf, brb, blb, Color::GREEN, false, false);
+    Plane *boxleft   = new Plane(tlf, blf, blb, tlb, Color::GREEN, false, false);
+    Plane *boxright  = new Plane(trf, brf, brb, trb, Color::GREEN, false, false);
+    Plane *boxfront  = new Plane(tlf, trf, brf, blf, Color::GREEN, false, false);
+    Plane *boxback   = new Plane(tlb, trb, brb, blb, Color::GREEN, false, false);
+
+    // Cylinder *cylinder1 = new Cylinder(Vector(0, -5, -30), 1, 1, Color::RED, true, true);
+
+    // sceneObjects.push_back(cylinder1);
+
+    sceneObjects.push_back(boxtop);
+    sceneObjects.push_back(boxbottom);
+    sceneObjects.push_back(boxleft);
+    sceneObjects.push_back(boxright);
+    sceneObjects.push_back(boxfront);
+    sceneObjects.push_back(boxback);
 
     sceneObjects.push_back(sphere13);
     sceneObjects.push_back(sphere14);
@@ -345,7 +455,6 @@ void initialize()
     sceneObjects.push_back(sphere33);
 
     sceneObjects.push_back(plane1);
-    sceneObjects.push_back(plane2);
 
     raytracer();
 }
@@ -355,7 +464,7 @@ int main(int argc, char *argv[])
 {
     glutInit(&argc, argv);
     glutInitDisplayMode(GLUT_SINGLE | GLUT_RGB );
-    glutInitWindowSize(1200,1200);
+    glutInitWindowSize(800,800);
     glutInitWindowPosition(20, 20);
     glutCreateWindow("Raytracing");
 
